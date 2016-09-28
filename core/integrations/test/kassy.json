@@ -1,0 +1,12 @@
+{
+	"name": "test",
+	"version": 4.0,
+	"startup": "test.js",
+  "type": "integration",
+  "config": [
+    [ "commandPrefix", "The default prefix for each command.", "/" ],
+    [ "threadId", "The ID of the thread to pretend to be on.", 1 ],
+    [ "senderId", "The ID of the sender to pretend to be.", 0 ],
+    [ "senderName", "The name of the sender to pretent to be.", "TESTING" ]
+  ]
+}

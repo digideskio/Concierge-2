@@ -1,0 +1,14 @@
+{
+  "name": "msbot",
+  "version": 4.0,
+  "startup": "msbot.js",
+  "type": "integration",
+  "config": [
+    [ "commandPrefix", "The default prefix for each command.", "!" ],
+    [ "port", "The local port to host the bot on.", 8000 ],
+    [ "key", "Path to TLS key.", "" ],
+    [ "cert", "Path to TLS cert.", "" ],
+    [ "app_id", "Microsoft App ID.", "" ],
+    [ "app_secret_password", "Microsoft App Secret Password.", "" ]
+  ]
+}

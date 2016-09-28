@@ -1,0 +1,12 @@
+{
+	"name": "slack",
+	"version": 4.0,
+	"startup": "slack.js",
+  "type": "integration",
+  "config": [
+    [ "commandPrefix", "The default prefix for each command.", "/" ],
+    [ "name", "The name of the bot.", "" ],
+    [ "icon", "URL to an icon for the bot.", "" ],
+    [ "slack_tokens", "Tokens to use for slack.", [], ["Token"]]
+  ]
+}

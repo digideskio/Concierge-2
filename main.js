@@ -31,6 +31,8 @@ global.rootPathJoin = function () {
     }
     return path.join.apply(this, a);
 };
+global.__modulesPath = rootPathJoin('modules/');
+global.__integrationsPath = rootPathJoin('integrations/');
 
 // Load NodeJS Modifications/Variables
 require('./core/prototypes.js');
@@ -47,12 +49,6 @@ args.splice(0, 2);
 
 // Parse optional arguments
 argp.runArguments(args);
-
-// Check modules path is set
-if (!global.__modulesPath) {
-    var path = require('path');
-    global.__modulesPath = path.resolve('./modules/');
-}
 
 require('coffee-script').register();
 global.coffeescriptLoaded = true;

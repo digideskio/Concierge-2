@@ -1,0 +1,9 @@
+{
+  "name": "grunt",
+  "version": 4.0,
+  "startup": "grunt.js",
+  "type": "integration",
+  "config": [
+    [ "port", "The local port to host the bot on.", 49886 ]
+  ]
+}

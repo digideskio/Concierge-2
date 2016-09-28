@@ -41,3 +41,7 @@ if (typeof String.prototype.capitiliseFirst !== 'function') {
         return this;
     };
 }
+
+global.$$ = function(data) {
+    return data[0];
+}

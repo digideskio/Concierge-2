@@ -1,0 +1,13 @@
+{
+  "name": "skype",
+  "version": 4.0,
+  "startup": "skype.js",
+  "type": "integration",
+  "config": [
+    [ "commandPrefix", "The default prefix for each command.", "!" ],
+    [ "username", "Username of the bot account.", "" ],
+    [ "password", "Password of the bot account.", "" ],
+    [ "acceptContactRequests", "Wheather contact requests to the bot should be automatically accepted.", true ],
+    [ "conversations", "ID's of conversations to listen to.", null, ["Conversation ID"] ]
+  ]
+}

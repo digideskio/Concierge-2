@@ -1,0 +1,10 @@
+{
+	"name": "telegram",
+	"version": 4.0,
+	"startup": "telegram.js",
+  "type": "integration",
+  "config": [
+    [ "commandPrefix", "The default prefix for each command.", "/" ],
+    [ "token", "The telegram token to use.", "" ]
+  ]
+}

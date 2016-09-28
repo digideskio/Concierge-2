@@ -1,4 +1,5 @@
 let consolec = require('./unsafe/console.js'),
+    path = require('path'),
     options = [
         {
             long: '--debug',
@@ -43,9 +44,18 @@ let consolec = require('./unsafe/console.js'),
             description: 'Sets the search path for modules used by the bot.',
             expects: ['DIRECTORY'],
             run: function (value) {
-                let path = require('path');
                 global.__modulesPath = path.resolve(value[0]);
-                console.warn(`Modules directory set to "${value}".`);
+                console.warn(`Modules directory set to "${value[0]}".`);
+            }
+        },
+        {
+            long: '--integrationdir',
+            short: '-i',
+            description: 'Sets the search path for integrations used by the bot.',
+            expects: ['DIRECTORY'],
+            run: function(value) {
+                global.__integrationsPath = path.resolve(value[0]);
+                console.warn(`Integrations directory set to "${value[0]}".`);
             }
         },
         {
