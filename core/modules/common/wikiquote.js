@@ -1,4 +1,4 @@
-var request = require.safe('request');
+var request = require('request');
 
 /**
  * This is a *very* heavily modified version of the library found here:

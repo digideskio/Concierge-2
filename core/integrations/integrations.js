@@ -138,19 +138,20 @@ exports.startIntegrations = function (callback) {
     }
 
     for (let i = 0; i < selectedIntegrations.length; i++) {
-        try {
-            let integ = selectedIntegrations[i],
-                wrapper = eventSourceWrapper(callback, integ.name);
-            console.write($$`Loading integration '${integ.name}'...\t`);
+        process.nextTick(((integ) => {
+            try {
+                let wrapper = eventSourceWrapper(callback, integ.name);
+                console.write($$`Loading integration '${integ.name}'...\t`);
 
-            integ.instance.start(wrapper);
-            console.info($$`[DONE]`);
-        }
-        catch (e) {
-            console.error($$`[FAIL]`);
-            console.debug($$`Failed to start output integration '${selectedIntegrations[i].name}'.`);
-            console.critical(e);
-        }
+                integ.instance.start(wrapper);
+                console.info($$`[DONE]`);
+            }
+            catch (e) {
+                console.error($$`[FAIL]`);
+                console.debug($$`Failed to start output integration '${integ.name}'.`);
+                console.critical(e);
+            }
+        }).bind(null, selectedIntegrations[i]));
     }
 
     started = true;

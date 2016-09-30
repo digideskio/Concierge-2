@@ -139,16 +139,34 @@ class Platform extends EventEmitter {
         }
         this.allowLoopback = !!this.config.getSystemConfig('loopback').enabled;
 
+        this.statusFlag = global.StatusFlag.Started;
+        console.warn($$`SystemStarted` + ' ' + $$`HelloWorld`.rainbow);
+
         // Load modules
         console.warn($$`LoadingModules`);
+        let modules;
+        this.modulesLoader.once('loading', (mods) => {
+            modules = mods;
+            for (let m of mods) {
+                console.info(' LOAD '.bgYellow.black + '\t' + $$`Loading module '${m}'`);
+            }
+        });
+
+        this.modulesLoader.on('load', (mod) => {
+            let index = modules.length - modules.indexOf(mod.name) - 2;
+            console.log('\x1b[' + (index + 2) + 'A' + ' DONE '.bgGreen + '\x1b[' + (index + 1) + 'B');
+        });
+
+        this.modulesLoader.on('fail', (name) => {
+            let index = modules.length - modules.indexOf(name) - 2;
+            console.log('\x1b[' + (index + 2) + 'A' + ' FAIL '.bgRed + '\x1b[' + (index + 1) + 'B');
+        });
+
         this.modulesLoader.loadAllModules(this);
 
         // Starting output
-        console.warn($$`StartingIntegrations`);
-        this.integrationManager.startIntegrations(this.onMessage.bind(this));
-
-        this.statusFlag = global.StatusFlag.Started;
-        console.warn($$`SystemStarted` + ' ' + $$`HelloWorld`.rainbow);
+        //console.warn($$`StartingIntegrations`);
+        //this.integrationManager.startIntegrations(this.onMessage.bind(this));
     }
 
     shutdown (flag) {
@@ -163,13 +181,13 @@ class Platform extends EventEmitter {
         this.integrationManager.stopIntegrations();
 
         // Unload user modules
-        this.modulesLoader.unloadAllModules(this.config);
+        this.modulesLoader.unloadAllModules(this.config, () => {
+            this.config.saveConfig();
+            this.statusFlag = flag ? flag : global.StatusFlag.Shutdown;
 
-        this.config.saveConfig();
-        this.statusFlag = flag ? flag : global.StatusFlag.Shutdown;
-
-        console.warn($$`${this.packageInfo.name} Shutdown`);
-        this.emit('shutdown', this.statusFlag);
+            console.warn($$`${this.packageInfo.name } Shutdown`);
+            this.emit('shutdown', this.statusFlag);
+        });
     }
 };
 

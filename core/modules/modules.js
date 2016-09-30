@@ -1,82 +1,100 @@
 /**
- * Provides helper functions for handling user and system modules.
+ * Provides methods for handling user modules.
  *
  * Written By:
  * 		Matthew Knox
  *
  * License:
  *		MIT License. All code unless otherwise specified is
- *		Copyright (c) Matthew Knox and Contributors 2015.
+ *		Copyright (c) Matthew Knox and Contributors 2016.
  */
 
-var loaders         = [require.once('./kassyModule.js'), require.once('./hubotModule.js')],
-    conflict        = 1,
-    loadedModules   = [],
+const EventEmitter = require('events'),
+    path = require('path'),
+    files = require.once(rootPathJoin('core/files.js'));
 
-    listModules = function () {
-        var modules = {};
-        for (var i = 0; i < loaders.length; i++) {
-            var m = loaders[i].listModules();
-            for (var key in m) {
-                var t = key;
-                while (modules[t]) {
-                    t = key + conflict++;
+class ModuleLoader extends EventEmitter {
+    constructor() {
+        super();
+        this.loaders = [require.once('./kassyModule.js'), require.once('./hubotModule.js')];
+        this.loadedModules = [];
+        //this.on('load', (mod) => {
+        //    console.info(console.isDebug() ? $$`Loading Succeeded` : $$`[DONE]`);
+        //});
+
+        //this.on('unload', (name) => {
+        //    console.debug($$`Unloading module "${name}".`);
+        //});
+    }
+
+    _listModules (callback) {
+        let data = files.filesInDirectory(global.__modulesPath),
+            asyncCounter = 0,
+            asyncLoader = (name, candidate, index) => {
+                let output = null;
+                try {
+                    output = this.verifyModule(candidate);
+                    if (!output) {
+                        throw null;
+                    }
+                    data[index] = output.name;
                 }
-                modules[t] = m[key];
-                modules[t].__loaderUID = i;
-                if (!modules[t].priority || modules[t].priority === 'normal') {
-                    modules[t].priority = 0;
+                catch (e) {
+                    //console.debug($$`A failure occured while listing "${name}". It doesn't appear to be a module.`);
+                    if (e) {
+                        console.critical(e);
+                    }
                 }
-                else if (modules[t].priority === 'first') {
-                    modules[t].priority = Number.MIN_SAFE_INTEGER;
+                callback(output, ++asyncCounter === data.length);
+            };
+
+        this.emit('loading', data);
+        for (let i = 0; i < data.length; i++) {
+            const candidate = path.resolve(path.join(global.__modulesPath, data[i]));
+            process.nextTick(asyncLoader.bind(null, data[i], candidate, i));
+        }
+    }
+
+    _loadModuleInternal (module, platform, callback) {
+        process.nextTick(() => {
+            let res;
+            try {
+                //console.write($$`Loading module '${module.name}'... ${(console.isDebug() ? '\n': '\t')}`);
+                const m = this.loaders[module.__loaderUID].loadModule(module, platform.config);
+                m.__loaderPriority = module.priority;
+                m.__version = module.version;
+                if (module.folderPath) {
+                    m.__folderPath = module.folderPath;
                 }
-                else if (modules[t].priority === 'last') {
-                    modules[t].priority = Number.MAX_SAFE_INTEGER;
-                }
-                else {
-                    modules[t].priority = 0;
-                }
+                m.platform = platform;
+                res = m;
+                this._insertSorted(res);
             }
-        }
-        return modules;
-    },
-
-    loadModuleInternal = function (module, platform) {
-        try {
-            console.write($$`Loading module '${module.name}'... ${(console.isDebug() ? '\n' : '\t')}`);
-            var m = loaders[module.__loaderUID].loadModule(module, platform.config);
-            m.__loaderPriority = module.priority;
-            m.__version = module.version;
-            if (module.folderPath) {
-                m.__folderPath = module.folderPath;
+            catch (e) {
+                //console.error(console.isDebug() ? $$`Loading Failed` : $$`[FAIL]`);
+                console.critical(e);
+                //console.debug($$`Module "${module.name}" could not be loaded.`);
+                res = null;
             }
-            m.platform = platform;
-            console.info(console.isDebug() ? $$`Loading Succeeded` : $$`[DONE]`);
-            return m;
-        }
-        catch (e) {
-            console.error(console.isDebug() ? $$`Loading Failed` : $$`[FAIL]`);
-            console.critical(e);
-            console.debug($$`Module "${module.name}" could not be loaded.`);
-            return null;
-        }
-    },
+            callback(res);
+        });
+    }
 
-    insertSorted = function (module) {
-        if (loadedModules.length === 0) {
-            loadedModules.push(module);
+    _insertSorted (module) {
+        if (this.loadedModules.length === 0) {
+            this.loadedModules.push(module);
             return;
         }
 
-        var upper = 0,
-            middle = Math.floor(loadedModules.length / 2),
-            lower = loadedModules.length - 1;
+        let upper = 0,
+            middle = Math.floor(this.loadedModules.length / 2),
+            lower = this.loadedModules.length - 1;
 
         while (lower !== middle && upper !== middle) {
-            if (module.__loaderPriority === loadedModules[middle].__loaderPriority) {
+            if (module.__loaderPriority === this.loadedModules[middle].__loaderPriority) {
                 break;
             }
-            if (module.__loaderPriority < loadedModules[middle].__loaderPriority) {
+            if (module.__loaderPriority < this.loadedModules[middle].__loaderPriority) {
                 lower = middle;
                 middle = Math.floor(upper + (lower - upper) / 2);
                 if (middle === 0 || lower === middle) {
@@ -86,92 +104,130 @@ var loaders         = [require.once('./kassyModule.js'), require.once('./hubotMo
             else {
                 upper = middle;
                 middle = Math.floor(upper + (lower - upper) / 2);
-                if (middle === loadedModules.length - 1 || upper === middle) {
+                if (middle === this.loadedModules.length - 1 || upper === middle) {
                     middle++;
                     break;
                 }
             }
         }
-        loadedModules.splice(middle, 0, module);
-    };
-
-exports.getLoadedModules = function () {
-    return loadedModules;
-};
-
-exports.loadModule = function(module, platform) {
-    var ld = loadModuleInternal(module, platform);
-    if (ld) {
-        insertSorted(ld);
-        if (ld.load) {
-            ld.load.call(ld.platform);
-        }
-    }
-};
-
-exports.loadAllModules = function(platform) {
-    var m = listModules();
-    for (var mod in m) {
-        var ld = loadModuleInternal(m[mod], platform);
-        if (ld) {
-            insertSorted(ld);
-        }
+        this.loadedModules.splice(middle, 0, module);
     }
 
-    for (var i = 0; i < loadedModules.length; i++) {
-        if (loadedModules[i].load) {
-            loadedModules[i].load.call(loadedModules[i].platform);
-        }
+    getLoadedModules () {
+        return this.loadedModules;
     }
-};
 
-exports.verifyModule = function (path) {
-    var mod = null;
-    for (var i = 0; i < loaders.length; i++) {
-        mod = loaders[i].verifyModule(path);
-        if (mod) {
-            if (!mod.priority || mod.priority === 'normal') {
-                mod.priority = 0;
+    loadModule (module, platform) {
+        this._loadModuleInternal(module, platform, (ld) => {
+            if (ld) {
+                if (ld.load) {
+                    ld.load.call(ld.platform);
+                }
+                this.emit('load', module);
+            } else {
+                this.emit('fail', module.name);
             }
-            else if (mod.priority === 'first') {
-                mod.priority = Number.MIN_SAFE_INTEGER;
-            }
-            else if (mod.priority === 'last') {
-                mod.priority = Number.MAX_SAFE_INTEGER;
-            }
-            else if (typeof mod.priority !== 'number') {
-                continue;
-            }
-            mod.__loaderUID = i;
-            break;
-        }
+        });
     }
-    return mod;
-};
 
-exports.unloadModule = function(mod, config) {
-    try {
-        console.debug($$`Unloading module "${mod.name}".`);
-        if (mod.unload) {
-            mod.unload();
-        }
-        config.saveConfig(mod.name);
-        mod.platform = null;
-        var index = loadedModules.indexOf(mod);
-        loadedModules.splice(index, 1);
-        if (!mod.__coreOnly) {
-            $$.removeContextIfExists(mod.name);
-        }
-    }
-    catch (e) {
-        console.error($$`Unloading module "${mod.name}" failed.`);
-        console.critical(e);
-    }
-    return null;
-};
+    loadAllModules (platform) {
+        let listComplete = false,
+            loadCounter = 0,
+            completeRun = () => {
+                for (let i = 0; i < this.loadedModules.length; i++) {
+                    if (this.loadedModules[i].load) {
+                        process.nextTick(((module) => {
+                            module.load.call(module.platform);
+                        }).bind(null, this.loadedModules[i]));
+                    }
+                }
+            };
 
-exports.unloadAllModules = function(config) {
-    while (loadedModules.length > 0) {
-        exports.unloadModule(loadedModules[0], config);
+        this._listModules((mod, complete) => {
+            if (!mod) {
+                if (loadCounter === 0 && complete) {
+                    completeRun();
+                }
+                return;
+            }
+        
+            loadCounter++;
+            listComplete = listComplete || complete;
+            this._loadModuleInternal(mod, platform, (res) => {
+                loadCounter--;
+                if (loadCounter === 0 && listComplete) {
+                    completeRun();
+                }
+
+                if (res) {
+                    this.emit('load', mod);
+                } else {
+                    this.emit('fail', mod.name);
+                }
+            });
+        });
     }
-};
+
+    verifyModule (modulePath) {
+        let mod = null;
+        for (let i = 0; i < this.loaders.length; i++) {
+            mod = this.loaders[i].verifyModule(modulePath);
+            if (mod) {
+                if (!mod.priority || mod.priority === 'normal') {
+                    mod.priority = 0;
+                }
+                else if (mod.priority === 'first') {
+                    mod.priority = Number.MIN_SAFE_INTEGER;
+                }
+                else if (mod.priority === 'last') {
+                    mod.priority = Number.MAX_SAFE_INTEGER;
+                }
+                else if (typeof mod.priority !== 'number') {
+                    continue;
+                }
+                mod.__loaderUID = i;
+                break;
+            }
+            //console.debug(`Skipping "${path.basename(modulePath)}". It isn't a ${this.loaders[i].name} module.`);
+        }
+        return mod;
+    }
+
+    unloadModule (mod, config, callback) {
+        process.nextTick(() => {
+            try {
+                if (mod.unload) {
+                    mod.unload();
+                }
+                config.saveConfig(mod.name);
+                mod.platform = null;
+                let index = this.loadedModules.indexOf(mod);
+                this.loadedModules.splice(index, 1);
+                $$.removeContextIfExists(mod.name);
+            } catch (e) {
+                console.error($$`Unloading module "${mod.name}" failed.`);
+                console.critical(e);
+            }
+            if (callback) {
+                callback();
+            }
+            this.emit('unload', mod.name);
+        });
+    }
+
+    unloadAllModules (config, callback) {
+        let completedCount = 0;
+        const modules = this.loadedModules.slice(),
+            completedCallback = () => {
+                if (++completedCount === modules.length) {
+                    callback();
+                }
+            };
+    
+        for (let mod of modules) {
+            this.unloadModule(mod, config, completedCallback);
+        }
+    }
+}
+
+module.exports = new ModuleLoader();

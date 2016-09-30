@@ -11,7 +11,6 @@
 
 var fs              = require('fs'),
     path            = require('path'),
-    files           = require.once('./../files.js'),
     descriptor      = 'kassy.json',
 
     verifyModuleDescriptior = function (kj) {
@@ -20,6 +19,8 @@ var fs              = require('fs'),
         }
         return true;
     };
+
+exports.name = 'Kassy';
 
 exports.verifyModule = function (location) {
     var stat = fs.statSync(location);
@@ -49,29 +50,6 @@ exports.verifyModule = function (location) {
     }
 
     return kj;
-};
-
-exports.listModules = function () {
-    var data = files.filesInDirectory(global.__modulesPath),
-        modules = {};
-
-    for (var i = 0; i < data.length; i++) {
-        try {
-            var candidate = path.resolve(path.join(global.__modulesPath, data[i])),
-                output = exports.verifyModule(candidate);
-            if (output) {
-                modules[output.name] = output;
-            }
-            else {
-                console.debug($$`Skipping "${data[i]}". It isn't a Kassy module.`);
-            }
-        } catch (e) {
-            console.debug($$`A failure occured while listing "${data[i]}". It doesn't appear to be a module.`);
-            console.critical(e);
-            continue;
-        }
-    }
-    return modules;
 };
 
 var createHelp = function(module) {
